@@ -1,2 +1,2 @@
-Account 2: 150.0
-Account 1: 30.0
+Account 2: 100.0
+Account 1: 50.0
