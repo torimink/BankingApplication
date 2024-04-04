@@ -36,6 +36,7 @@ public class BankAccount {
             balance = balance - amount;
         } else {
             System.out.println("Insufficient funds");
+            throw new IllegalArgumentException("Insufficient funds");
         }
     }
 
