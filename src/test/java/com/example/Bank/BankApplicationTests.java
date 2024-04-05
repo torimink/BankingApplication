@@ -43,8 +43,12 @@ public class BankApplicationTests {
 
     @Test
     public void testWithdrawWithInsufficientFunds() {
-        account.withdraw(150);
-        assertEquals(100, account.getBalance());
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            account.withdraw(150);
+        });
+        String expectedMessage = "Insufficient funds for withdraw";
+        String actualMessage = exception.getMessage();
+        assertTrue(actualMessage.contains(expectedMessage));
     }
 
     @Test
@@ -58,9 +62,12 @@ public class BankApplicationTests {
     @Test
     public void testTransferWithInsufficientFunds() {
         BankAccount destinationAccount = new BankAccount(0, 654321, "DestinationAccount");
-        account.transfer(destinationAccount, 150);
-        assertEquals(100, account.getBalance());
-        assertEquals(0, destinationAccount.getBalance());
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            account.transfer(destinationAccount, 150);
+        });
+        String expectedMessage = "Insufficient funds";
+        String actualMessage = exception.getMessage();
+        assertTrue(actualMessage.contains(expectedMessage));
     }
 }
 
