@@ -2,81 +2,100 @@ package com.example.Bank;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/accounts")
 public class BankController {
+
     private static final Logger logger = LoggerFactory.getLogger(BankController.class);
+    private final BankAccountService bankAccountService;
+
+    @Autowired
+    public BankController(BankAccountService bankAccountService) {
+        this.bankAccountService = bankAccountService;
+    }
+
+    @GetMapping
+    public List<BankAccount> getAccounts() {
+        return bankAccountService.getAccounts();
+    }
+
+    @PostMapping
+    public ResponseEntity<String> registerNewBankAccount(@RequestBody BankAccount bankAccount) {
+        bankAccountService.addNewBankAccount(bankAccount);
+        logger.info("New bank account registered: {}", bankAccount);
+        return ResponseEntity.ok("Account registered successfully");
+    }
 
     @GetMapping("/")
     public String home() {
         return "Welcome to your Bank Application!";
-    }  // Testinimui
-
-        @GetMapping("/{accountId}/balance")
-        public ResponseEntity<Double> getBalance(@PathVariable String accountId) {
-            System.out.println("Getting balance for account ID: " + accountId);
-            HashMap<String, BankAccount> accounts = BankApplication.getAccounts();
-            if (accounts.containsKey(accountId)) {
-                return ResponseEntity.ok(accounts.get(accountId).getBalance());
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        }
-
-    @PostMapping("/{accountId}/deposit") // http://localhost:8080/api/accounts/1/deposit?amount=20
-    public String deposit(@PathVariable String accountId, @RequestParam double amount) {
-        logger.info("Attempting to deposit {} to account {}", amount, accountId);
-        HashMap<String, BankAccount> accounts = BankApplication.getAccounts();
-        if (accounts.containsKey(accountId)) {
-            BankAccount account = accounts.get(accountId);
-            account.deposit(amount);
-            logger.info("Deposit successful. New balance: {}", account.getBalance());
-            return "Deposit successful. New balance: " + account.getBalance();
-        } else {
-            logger.warn("Attempted to deposit to a non-existing account: {}", accountId);
-            throw new RuntimeException("Account not found");
-        }
     }
 
-    @PostMapping("/{accountId}/withdraw") // http://localhost:8080/api/accounts/1/withdraw?amount=20
-    public ResponseEntity<String> withdraw(@PathVariable String accountId, @RequestParam double amount) {
-        logger.info("Request to withdraw {} from account {}", amount, accountId);
-        HashMap<String, BankAccount> accounts = BankApplication.getAccounts();
-        if (accounts.containsKey(accountId)) {
-            BankAccount account = accounts.get(accountId);
-            try {
-                account.withdraw(amount);
-                logger.info("Withdrawal successful. New balance for account {}: {}", accountId, account.getBalance());
-                return ResponseEntity.ok("Withdrawal successful. New balance: " + account.getBalance());
-            } catch (IllegalArgumentException e) {
-                logger.warn("Withdrawal failed for account {}: {}", accountId, e.getMessage());
-                return ResponseEntity.badRequest().body(e.getMessage());
-            }
-        } else {
-            logger.warn("Withdrawal attempted on non-existing account: {}", accountId);
+    @GetMapping("/{accountId}/balance")
+    public ResponseEntity<Double> getBalance(@PathVariable String accountId) {
+        try {
+            BankAccount account = bankAccountService.getAccountById(accountId);
+            return ResponseEntity.ok(account.getBalance());
+        } catch (RuntimeException e) {
+            logger.error("Account not found: {}", accountId);
             return ResponseEntity.notFound().build();
         }
     }
 
-    @PostMapping("/{sourceAccountId}/transfer") // http://localhost:8080/api/accounts/1/transfer?destinationAccountId=2&amount=30
-    public String transfer(@PathVariable String sourceAccountId, @RequestParam String destinationAccountId, @RequestParam double amount) {
-        logger.info("Attempting to transfer {} from account {} to account {}", amount, sourceAccountId, destinationAccountId);
-        HashMap<String, BankAccount> accounts = BankApplication.getAccounts();
-        if (accounts.containsKey(sourceAccountId) && accounts.containsKey(destinationAccountId)) {
-            BankAccount sourceAccount = accounts.get(sourceAccountId);
-            BankAccount destinationAccount = accounts.get(destinationAccountId);
-            sourceAccount.transfer(destinationAccount, amount);
-            logger.info("Transfer successful. New balance of your account: {}, New balance of destination account: {}", sourceAccount.getBalance(), destinationAccount.getBalance());
-            return "Transfer successful. New balance of your account: " + sourceAccount.getBalance() + ", New balance of destination account: " + destinationAccount.getBalance();
-        } else {
-            logger.warn("One or both accounts not found. Source: {}, Destination: {}", sourceAccountId, destinationAccountId);
-            throw new RuntimeException("One or both accounts not found");
+    @PostMapping("/{accountId}/deposit")
+    public ResponseEntity<String> deposit(@PathVariable String accountId, @RequestParam double amount) {
+        try {
+            bankAccountService.deposit(accountId, amount);
+            return ResponseEntity.ok("Deposit successful");
+        } catch (RuntimeException e) {
+            logger.error("Error during deposit: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{accountId}/withdraw")
+    public ResponseEntity<String> withdraw(@PathVariable String accountId, @RequestParam double amount) {
+        try {
+            bankAccountService.withdraw(accountId, amount);
+            return ResponseEntity.ok("Withdrawal successful");
+        } catch (RuntimeException e) {
+            logger.error("Error during withdrawal: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{sourceAccountId}/transfer")
+    public ResponseEntity<String> transfer(@PathVariable String sourceAccountId, @RequestParam String destinationAccountId, @RequestParam double amount) {
+        try {
+            bankAccountService.transfer(sourceAccountId, destinationAccountId, amount);
+            return ResponseEntity.ok("Transfer successful");
+        } catch (RuntimeException e) {
+            logger.error("Error during transfer: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<?> deleteAccount(@PathVariable Long id) {
+        logger.info("Attempting to delete account with ID: {}", id);
+        try {
+            bankAccountService.deleteAccount(id);
+            logger.info("Account with ID: {} deleted successfully", id);
+            return new ResponseEntity<>(HttpStatus.OK);
+        } catch (EmptyResultDataAccessException e) {
+            logger.error("Attempted to delete a non-existing account with ID: {}", id, e);
+            return new ResponseEntity<>("Account not found", HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            logger.error("An error occurred while deleting account with ID: {}", id, e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
