@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Account Details</title>
+</head>
+<body>
+<h1>Account Details</h1>
+<div th:if="${account != null}">
+    <p>Account ID: <span th:text="${account.accountId}"></span></p>
+    <p>Balance: <span th:text="${account.balance}"></span></p>
+    <!-- Add forms for deposit, withdraw and transfer actions -->
+    <!-- Example for deposit: -->
+    <form th:action="@{/accounts/{accountId}/deposit(accountId=${account.accountId})}" method="post">
+        <input type="number" name="amount" placeholder="Amount to deposit">
+        <button type="submit">Deposit</button>
+    </form>
+</div>
+<div th

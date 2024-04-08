@@ -17,10 +17,8 @@ public class BankAccountConfig {
             if (repository.count() == 0) {
                 BankAccount account1 = new BankAccount(50.0, 1, "1");
                 BankAccount account2 = new BankAccount(100.0, 2, "2");
-                BankAccount account3 = new BankAccount(1000.00, 3, "3");
-                BankAccount account4 = new BankAccount(1500.00, 4, "4");
 
-                repository.saveAll(List.of(account1, account2, account3, account4));
+                repository.saveAll(List.of(account1, account2));
             }
         };
     }
